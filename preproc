@@ -1,0 +1,116 @@
+meth1<-readRDS('../GS/GS_methylation/norm_mvals.rds')
+
+
+
+
+
+
+meth2<-readRDS('/Cluster_Filespace/Marioni_Group/GS/GS_methylation/wave3-final/w3.mvals.rds')
+
+meth1<-t(meth1)
+meth2<-t(meth2)
+
+intersect<-intersection(colnames(meth1),colnames(meth2))
+
+meth<-rbind(meth1[,intersect],meth2[,intersect])
+
+naid1<-which(is.na(meth[,1:2e5]),arr.ind=T)        
+naid2<-which(is.na(meth[,200001:4e5]),arr.ind=T)   
+naid3<-which(is.na(meth[,400001:6e5]),arr.ind=T)   
+naid4<-which(is.na(meth[,600001:772667]),arr.ind=T)
+
+naid2[,2]<-naid2[,2]+2e5
+naid3[,2]<-naid3[,2]+4e5
+naid4[,2]<-naid4[,2]+6e5
+
+naid<-rbind(naid1,naid2,naid3,naid4)
+
+
+
+
+
+for(i in 1:nrow(naid)){
+	if(is.na(meth[naid[i,1],naid[i,2]]))print(paste0('yes ',i))
+	meth[naid[i,1],naid[i,2]]<-mean(meth[,naid[i,2]],na.rm=T)
+}
+
+lowid<-which((meth< -10),arr.ind=T)
+
+lowid1<-which((meth[,1:2e5])< -20,arr.ind=T)        
+lowid2<-which((meth[,200001:4e5]< -20),arr.ind=T)   
+lowid3<-which((meth[,400001:6e5]< -20),arr.ind=T)   
+lowid4<-which((meth[,600001:772667]< -20),arr.ind=T)
+
+lowid2[,2]<-lowid2[,2]+2e5
+lowid3[,2]<-lowid3[,2]+4e5
+lowid4[,2]<-lowid4[,2]+6e5
+
+lowid<-rbind(lowid1,lowid2,lowid3,lowid4)
+
+for(i in 1:nrow(lowid)){
+	if((meth[lowid[i,1],lowid[i,2]])< -20)print(paste0('yes ',i))
+	meth[lowid[i,1],lowid[i,2]]<- -20
+}
+
+saveRDS(meth,'meth.rds')
+
+########
+annot1<-read.csv('../GS/GS_methylation/stradl-samples-5101.csv')           
+age1<-read.table('../GS/GS_methylation/age_sex_22May2018',header=TRUE)
+
+annot1$age<-age1$age 
+annot2<-read.csv('../GS/GS_methylation/wave3-final/samplesheet.final.csv') 
+
+annot1$Sample_Sentrix_ID<-paste0(annot1$Sentrix_ID,'_',annot1$Sentrix_Position)
+
+
+
+annot2$Batch<-annot2$Batch+31
+
+names(annot1)[15]<-'Batch'
+
+annotation<-rbind(annot1[,c('Sample_Name','Batch','Sample_Sentrix_ID','sex','age','Bcell','CD4T','CD8T','Gran','NK','Mono')],annot2[,c('Sample_Name','Batch','Sample_Sentrix_ID','sex','age','Bcell','CD4T','CD8T','Gran','NK','Mono')])
+
+
+annotation<-annotation[match(rownames(meth),annotation$Sample_Sentrix_ID),]
+
+dep<-read.table('dep_status.txt')
+dep_clean<-dep[dep$V2==1,]
+annotation$MDD<-0
+annotation$MDD[match(annotation$Sample_Name,dep_clean$V1)>0]<-1
+
+
+
+annotation$sex<-1*(annotation$sex=='M')
+
+unrelated<-(annotation$Sample_Name[1:5101] %in% read.table('../GS/Methylation_PCs_Unrelated/STRADL_meth_2586_unrelated_samples_FID_IID.txt')$V2 )
+
+
+annotation$unrelated<-0
+
+annotation$unrelated[which(unrelated)]<-1
+annotation$unrelated[5102:9551]<-1
+
+saveRDS(annotation,'annotation.rds')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
